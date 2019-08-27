@@ -23,7 +23,7 @@ object Movies : Table() {
 
 class MovieBody(val title : String, val id : Int, val time : String?)
 
-class MovieWithShowings(val title: String, val id : Int, var times : List<String?>)
+class MovieWithShowings(val title: String, val id : Int, val times : List<String>)
 
 class MovieResponse(val title: String, val id : Int)
 
@@ -56,11 +56,14 @@ fun Application.module() {
                 movies = (Movies leftJoin Showings)
                 .selectAll().map {
                     MovieBody(it[Movies.title], it[Movies.id], it[Showings.time])
-                }.fold(mutableMapOf<Int, MovieWithShowings>()) { acc, current ->
+                }.fold(mapOf<Int, MovieWithShowings>()) { acc, current ->
                     val movie = acc.getOrDefault(current.id, MovieWithShowings(current.title, current.id, listOf()) )
-                    movie.times += current.time
-                    acc.set(current.id, movie)
-                    acc
+                    val newMovie = MovieWithShowings(
+                        movie.title,
+                        movie.id,
+                        if(current.time != null) { movie.times.plus(current.time) } else { movie.times }
+                    )
+                    acc.plus(current.id to newMovie)
                 }.map{ it.value }
             }
             call.respond(movies)
